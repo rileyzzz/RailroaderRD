@@ -18,7 +18,7 @@ internal struct PIEState
     public byte Wiper;
     public byte Lights;
 
-    public ulong Buttons;
+    public ButtonMask Buttons;
     //Reverser = rdata[1]
     //Throttle = rdata[2]
     //AutoBrake = rdata[3]
@@ -29,10 +29,29 @@ internal struct PIEState
     //buttons = rdata[8] to rdata[13]
 }
 
-[System.Serializable]
-internal enum ButtonMask : ulong
+[Flags]
+public enum ButtonMask : ulong
 {
-
+    Buttons0    = 0x0000000000FF,
+    Buttons1    = 0x00000000FF00,
+    Buttons2    = 0x000000FF0000,
+    Buttons3    = 0x00000F000000,
+    Up          = 0x000010000000,
+    Down        = 0x000020000000,
+    DPadUp      = 0x000040000000,
+    DPadRight   = 0x000080000000,
+    DPadDown    = 0x000100000000,
+    DPadLeft    = 0x000200000000,
+    RangeUp     = 0x000400000000,
+    RangeDown   = 0x000800000000,
+    EStopUp     = 0x001000000000,
+    EStopDown   = 0x002000000000,
+    Alert       = 0x004000000000,
+    Sand        = 0x008000000000,
+    Pantograph  = 0x010000000000,
+    Bell        = 0x020000000000,
+    WhistleUp   = 0x040000000000,
+    WhistleDown = 0x080000000000
 }
 
 internal class CalibrationData
@@ -183,6 +202,8 @@ internal class RaildriverInterface : PIEDataHandler, PIEErrorHandler
         }
     }
 
+    public ButtonMask Buttons => deviceState.Buttons;
+
 
     byte[] wData = null;
 
@@ -263,6 +284,77 @@ internal class RaildriverInterface : PIEDataHandler, PIEErrorHandler
         device = null;
     }
 
+    private byte SevenSegment(char c)
+    {
+        //   1
+        // 6   2
+        //   7
+        // 5   3
+        //   4   8
+
+        switch (c)
+        {
+            case '0': return 0b00111111;
+            case '1': return 0b00000110;
+            case '2': return 0b01011011;
+            case '3': return 0b01001111;
+            case '4': return 0b01100110;
+            case '5': return 0b01101101;
+            case '6': return 0b01111101;
+            case '7': return 0b00000111;
+            case '8': return 0b01111111;
+            case '9': return 0b01101111;
+            default: return 0;
+        }
+    }
+
+
+    byte[] buf = new byte[3];
+    public void UpdateVelocityDisplay(float velocity)
+    {
+        if (device == null)
+            return;
+
+        // m/s to mph
+        string v = (velocity * 2.23694f).ToString("0.0").PadLeft(3);
+        for (int j = 0; j < device.WriteLength; j++)
+        {
+            wData[j] = 0;
+        }
+
+        int nBuf = 0;
+        int iStr = 0;
+        while (nBuf < 3 && iStr < v.Length)
+        {
+            char c = v[iStr++];
+            byte data = SevenSegment(c);
+            if (nBuf != 2 && iStr < v.Length && v[iStr] == '.')
+            {
+                iStr++;
+                data |= 0x80;
+            }
+
+            buf[nBuf++] = data;
+        }
+
+        int o = 1;
+        wData[o++] = 134;
+
+        for (int j = nBuf - 1; j >= 0; --j)
+        {
+            wData[o++] = buf[j];
+        }
+
+
+
+        //wData[2] = (byte)SevenSegment(v[0]);
+        //wData[3] = (byte)SevenSegment(v[1]);
+        //wData[4] = (byte)SevenSegment(v[2]);
+
+        int result = 404;
+        while (result == 404) { result = device.WriteData(wData); }
+    }
+
     void PIEDataHandler.HandlePIEHidData(Byte[] data, PIEDevice sourceDevice, int error)
     {
         //check the sourceDevice and make sure it is the same device as selected in CboDevice   
@@ -289,7 +381,7 @@ internal class RaildriverInterface : PIEDataHandler, PIEErrorHandler
             uint buttons0 = BitConverter.ToUInt32(data, 8);
             uint buttons1 = BitConverter.ToUInt16(data, 12);
 
-            deviceState.Buttons = (((ulong)buttons1 << 32) | (ulong)buttons0);
+            deviceState.Buttons = (ButtonMask)(((ulong)buttons1 << 32) | (ulong)buttons0);
 
             //Reverser = rdata[1]
             //Throttle = rdata[2]

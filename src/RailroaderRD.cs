@@ -12,6 +12,7 @@ using Game.Messages;
 using Game.State;
 //using UnityEngine;
 using Effects;
+using KeyValue.Runtime;
 
 namespace RailroaderRD;
 
@@ -32,8 +33,12 @@ public class RailroaderRD : PluginBase, IUpdateHandler, IModTabHandler
 
     public RailroaderRD(IModdingContext moddingContext, IModDefinition self)
     {
+        var harmony = new Harmony("com.rileyzzz.railroaderRD");
+        harmony.PatchAll();
+
         modContext = moddingContext;
         LoadConfig();
+
         moddingContext.RegisterConsoleCommand(new EchoCommand());
     }
 
@@ -72,8 +77,14 @@ public class RailroaderRD : PluginBase, IUpdateHandler, IModTabHandler
         StateManager.ApplyLocal(new PropertyChange(loco.id, control, value));
     }
 
-    private int HeadlightState = 0;
-    private int WiperState = 0;
+    private Value GetValue(BaseLocomotive loco, PropertyChange.Control control)
+    {
+        return loco.KeyValueObject[PropertyChange.KeyForControl(control)];
+    }
+
+    private ButtonMask prevMask = 0;
+
+    public ButtonMask Buttons => raildriver?.Buttons ?? 0;
     public void Update()
     {
         // logger.Verbose("UPDATE()");
@@ -82,6 +93,8 @@ public class RailroaderRD : PluginBase, IUpdateHandler, IModTabHandler
             var controller = TrainController.Shared;
             if (controller != null && controller.SelectedLocomotive is BaseLocomotive loco)
             {
+                raildriver.UpdateVelocityDisplay(Math.Abs(loco.velocity));
+
                 loco.ControlHelper.Reverser = -raildriver.Reverser;
                 loco.ControlHelper.Throttle = raildriver.Throttle;
                 loco.ControlHelper.TrainBrake = 1.0f - raildriver.AutoBrake;
@@ -91,13 +104,33 @@ public class RailroaderRD : PluginBase, IUpdateHandler, IModTabHandler
                     loco.ControlHelper.BailOff();
 
                 int headlight = (int)Math.Round(raildriver.Lights * 2.0f);
-                if (HeadlightState != headlight)
+                int bits = HeadlightStateLogic.IntFromStates((HeadlightController.State)headlight, (HeadlightController.State)headlight);
+                if (bits != GetValue(loco, PropertyChange.Control.Headlight).IntValue)
                 {
-                    HeadlightState = headlight;
-                    int bits = HeadlightStateLogic.IntFromStates((HeadlightController.State)headlight, (HeadlightController.State)headlight);
-                    
                     ChangeValue(loco, PropertyChange.Control.Headlight, bits);
                 }
+
+                ButtonMask downMask = raildriver.Buttons;
+                ButtonMask pressed = downMask & (downMask ^ prevMask);
+
+                if (pressed.HasFlag(ButtonMask.Bell))
+                {
+                    loco.ControlHelper.Bell = !loco.ControlHelper.Bell;
+                }
+
+                float whistle = 0.0f;
+                if (downMask.HasFlag(ButtonMask.WhistleUp))
+                    whistle += 1.0f;
+                if (downMask.HasFlag(ButtonMask.WhistleDown))
+                    whistle += 0.5f;
+
+                loco.ControlHelper.Horn = whistle;
+
+                prevMask = downMask;
+            }
+            else
+            {
+                raildriver.UpdateVelocityDisplay(0);
             }
         }
     }

@@ -8,7 +8,9 @@
   <ItemGroup>
     <GameAssembly Include="Assembly-CSharp" />
     <GameAssembly Include="Railloader.Interchange" />
-    <GameAssembly Include="Serilog" />
+		<GameAssembly Include="Serilog" />
+		<GameAssembly Include="KeyValue.Runtime" />
+		<GameAssembly Include="UnityEngine.InputLegacyModule" />
 
     <GameAssembly Include="UnityEngine.CoreModule" />
 		<GameAssembly Include="0Harmony" />
