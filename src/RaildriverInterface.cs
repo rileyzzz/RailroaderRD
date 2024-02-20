@@ -18,6 +18,7 @@ internal struct PIEState
     public byte Wiper;
     public byte Lights;
 
+    public ulong Buttons;
     //Reverser = rdata[1]
     //Throttle = rdata[2]
     //AutoBrake = rdata[3]
@@ -26,6 +27,12 @@ internal struct PIEState
     //Wiper = rdata[6]
     //Lights = rdata[7]
     //buttons = rdata[8] to rdata[13]
+}
+
+[System.Serializable]
+internal enum ButtonMask : ulong
+{
+
 }
 
 internal class CalibrationData
@@ -65,7 +72,7 @@ internal class RaildriverInterface : PIEDataHandler, PIEErrorHandler
     PIEDevice device;
 
     PIEState deviceState;
-    public CalibrationData CalibrationData { get; private set; }
+    public CalibrationData CalibrationData => RDConfig.Current.CalibrationData;
 
     public byte RawReverser => deviceState.Reverser;
     public float Reverser
@@ -144,13 +151,45 @@ internal class RaildriverInterface : PIEDataHandler, PIEErrorHandler
         }
     }
 
+    public byte RawWipers => deviceState.Wiper;
+    public float Wipers
+    {
+        get
+        {
+            if (CalibrationData.WiperMin == CalibrationData.WiperMax)
+                return 0.0f;
+
+            return ((float)(RawWipers - CalibrationData.WiperMin) / (float)(CalibrationData.WiperMax - CalibrationData.WiperMin));
+        }
+    }
+
+    public byte RawLights => deviceState.Lights;
+    public float Lights
+    {
+        get
+        {
+            if (CalibrationData.LightsMin == CalibrationData.LightsMax)
+                return 0.0f;
+
+            return ((float)(RawLights - CalibrationData.LightsMin) / (float)(CalibrationData.LightsMax - CalibrationData.LightsMin));
+        }
+    }
+
 
     byte[] wData = null;
 
     public RaildriverInterface()
     {
-        // Load calibration data from JSON.
-        CalibrationData = new();
+    }
+
+    public void SaveConfig()
+    {
+
+    }
+
+    public void LoadConfig()
+    {
+
     }
 
     public void Connect()
@@ -238,6 +277,11 @@ internal class RaildriverInterface : PIEDataHandler, PIEErrorHandler
                 Wiper = data[6],
                 Lights = data[7],
             };
+
+            uint buttons0 = BitConverter.ToUInt32(data, 8);
+            uint buttons1 = BitConverter.ToUInt16(data, 12);
+
+            deviceState.Buttons = (((ulong)buttons1 << 32) | (ulong)buttons0);
 
             //Reverser = rdata[1]
             //Throttle = rdata[2]

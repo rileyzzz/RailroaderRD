@@ -8,13 +8,20 @@ using System.Threading;
 using UI;
 using UI.Builder;
 using HarmonyLib;
+using Game.Messages;
+using Game.State;
+using UnityEngine;
+using Effects;
 
 namespace RailroaderRD;
 
 public class RailroaderRD : PluginBase, IUpdateHandler, IModTabHandler
 {
+    private const string SettingsID = "RailroaderRD";
+
     ILogger logger = Log.ForContext<RailroaderRD>();
     RaildriverInterface raildriver = null;
+    IModdingContext modContext;
 
     public static RailroaderRD Instance { get; set; }
 
@@ -25,9 +32,21 @@ public class RailroaderRD : PluginBase, IUpdateHandler, IModTabHandler
 
     public RailroaderRD(IModdingContext moddingContext, IModDefinition self)
     {
-        logger.Information("Hello! Constructor was called for {modId}/{modVersion}!", self.Id, self.Version);
-
+        modContext = moddingContext;
+        LoadConfig();
         moddingContext.RegisterConsoleCommand(new EchoCommand());
+    }
+
+    public void LoadConfig()
+    {
+        RDConfig.Current = modContext.LoadSettingsData<RDConfig>(SettingsID);
+        if (RDConfig.Current == null)
+            RDConfig.Current = new();
+    }
+
+    public void SaveConfig()
+    {
+        modContext.SaveSettingsData<RDConfig>(SettingsID, RDConfig.Current);
     }
 
     public override void OnEnable()
@@ -48,6 +67,13 @@ public class RailroaderRD : PluginBase, IUpdateHandler, IModTabHandler
         Instance = null;
     }
 
+    private void ChangeValue(BaseLocomotive loco, PropertyChange.Control control, int value)
+    {
+        StateManager.ApplyLocal(new PropertyChange(loco.id, control, value));
+    }
+
+    private int HeadlightState = 0;
+    private int WiperState = 0;
     public void Update()
     {
         // logger.Verbose("UPDATE()");
@@ -64,6 +90,14 @@ public class RailroaderRD : PluginBase, IUpdateHandler, IModTabHandler
                 if (raildriver.BailOff > 0.7f)
                     loco.ControlHelper.BailOff();
 
+                int headlight = (int)Math.Round(raildriver.Lights * 2.0f);
+                if (HeadlightState != headlight)
+                {
+                    HeadlightState = headlight;
+                    int bits = HeadlightStateLogic.IntFromStates((HeadlightController.State)headlight, (HeadlightController.State)headlight);
+                    
+                    ChangeValue(loco, PropertyChange.Control.Headlight, bits);
+                }
             }
         }
     }
@@ -77,46 +111,46 @@ public class RailroaderRD : PluginBase, IUpdateHandler, IModTabHandler
 
         builder.AddLabel("Reverser");
         builder.HStack(delegate (UIPanelBuilder hstack) {
-            hstack.AddButtonCompact("F", () => { raildriver.CalibrationData.ReverserMin = raildriver.RawReverser; });
-            hstack.AddButtonCompact("N", () => { raildriver.CalibrationData.ReverserCenter = raildriver.RawReverser; });
-            hstack.AddButtonCompact("R", () => { raildriver.CalibrationData.ReverserMax = raildriver.RawReverser; });
+            hstack.AddButtonCompact("F", () => { raildriver.CalibrationData.ReverserMin = raildriver.RawReverser; SaveConfig(); });
+            hstack.AddButtonCompact("N", () => { raildriver.CalibrationData.ReverserCenter = raildriver.RawReverser; SaveConfig(); });
+            hstack.AddButtonCompact("R", () => { raildriver.CalibrationData.ReverserMax = raildriver.RawReverser; SaveConfig(); });
         });
         builder.AddSlider(() => raildriver.Reverser, () => "", (x) => { }, -1.0f, 1.0f);
 
         builder.AddLabel("Dynamic Brake/Throttle");
         builder.HStack(delegate (UIPanelBuilder hstack) {
-            hstack.AddButtonCompact("Brk", () => { raildriver.CalibrationData.ThrottleMin = raildriver.RawThrottle; });
-            hstack.AddButtonCompact("0", () => { raildriver.CalibrationData.ThrottleCenter = raildriver.RawThrottle; });
-            hstack.AddButtonCompact("Throttle", () => { raildriver.CalibrationData.ThrottleMax = raildriver.RawThrottle; });
+            hstack.AddButtonCompact("Brk", () => { raildriver.CalibrationData.ThrottleMin = raildriver.RawThrottle; SaveConfig(); });
+            hstack.AddButtonCompact("0", () => { raildriver.CalibrationData.ThrottleCenter = raildriver.RawThrottle; SaveConfig(); });
+            hstack.AddButtonCompact("Throttle", () => { raildriver.CalibrationData.ThrottleMax = raildriver.RawThrottle; SaveConfig(); });
         });
         builder.AddSlider(() => raildriver.Throttle, () => "", (x) => { }, -1.0f, 1.0f);
 
         builder.AddLabel("Auto Brake");
         builder.HStack(delegate (UIPanelBuilder hstack) {
-            hstack.AddButtonCompact("Emg", () => { raildriver.CalibrationData.AutoBrakeMin = raildriver.RawAutoBrake; });
-            hstack.AddButtonCompact("Full", () => { raildriver.CalibrationData.AutoBrakeEmg = raildriver.RawAutoBrake; });
-            hstack.AddButtonCompact("Release", () => { raildriver.CalibrationData.AutoBrakeMax = raildriver.RawAutoBrake; });
+            hstack.AddButtonCompact("Emg", () => { raildriver.CalibrationData.AutoBrakeMin = raildriver.RawAutoBrake; SaveConfig(); });
+            hstack.AddButtonCompact("Full", () => { raildriver.CalibrationData.AutoBrakeEmg = raildriver.RawAutoBrake; SaveConfig(); });
+            hstack.AddButtonCompact("Release", () => { raildriver.CalibrationData.AutoBrakeMax = raildriver.RawAutoBrake; SaveConfig(); });
         });
         builder.AddSlider(() => raildriver.AutoBrake, () => "", (x) => { }, 0.0f, 1.0f);
 
         builder.AddLabel("Ind Brake");
         builder.HStack(delegate (UIPanelBuilder hstack) {
-            hstack.AddButtonCompact("Full", () => { raildriver.CalibrationData.IndBrakeMin = raildriver.RawIndBrake; });
-            hstack.AddButtonCompact("Release", () => { raildriver.CalibrationData.IndBrakeMax = raildriver.RawIndBrake; });
+            hstack.AddButtonCompact("Full", () => { raildriver.CalibrationData.IndBrakeMin = raildriver.RawIndBrake; SaveConfig(); });
+            hstack.AddButtonCompact("Release", () => { raildriver.CalibrationData.IndBrakeMax = raildriver.RawIndBrake; SaveConfig(); });
         });
         builder.AddSlider(() => raildriver.IndBrake, () => "", (x) => { }, 0.0f, 1.0f);
 
         builder.AddLabel("Bail Off");
         builder.HStack(delegate (UIPanelBuilder hstack) {
-            hstack.AddButtonCompact("0", () => { raildriver.CalibrationData.BailOffMin = raildriver.RawBailOff; });
-            hstack.AddButtonCompact("1", () => { raildriver.CalibrationData.BailOffMax = raildriver.RawBailOff; });
+            hstack.AddButtonCompact("0", () => { raildriver.CalibrationData.BailOffMin = raildriver.RawBailOff; SaveConfig(); });
+            hstack.AddButtonCompact("1", () => { raildriver.CalibrationData.BailOffMax = raildriver.RawBailOff; SaveConfig(); });
         });
         builder.AddSlider(() => raildriver.BailOff, () => "", (x) => { }, 0.0f, 1.0f);
     }
 
     public void ModTabDidClose()
     {
-        logger.Information("Nighttime...");
+        //  SaveConfig();
     }
 }
 
