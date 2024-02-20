@@ -1,0 +1,7 @@
+{
+  "manifestVersion": 1,
+  "id": "Rileyzzz.RailroaderRD",
+  "name": "RailroaderRD (RailDriver)",
+  "version": "1.0",
+  "assemblies": [ "RailroaderRD" ]
+}

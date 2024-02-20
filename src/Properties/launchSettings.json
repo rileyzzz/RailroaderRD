@@ -1,0 +1,12 @@
+{
+  "profiles": {
+    "RailroaderRD": {
+      "commandName": "Project"
+    },
+    "Railroader": {
+      "commandName": "Executable",
+      "executablePath": "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Railroader\\Railroader.exe",
+      "nativeDebugging": true
+    }
+  }
+}
