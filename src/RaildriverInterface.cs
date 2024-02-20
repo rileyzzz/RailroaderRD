@@ -59,6 +59,7 @@ internal class CalibrationData
     public byte WiperMax = 0xff;
 
     public byte LightsMin = 0x00;
+    public byte LightsCenter = 0x7f;
     public byte LightsMax = 0xff;
 
     public CalibrationData()
@@ -168,10 +169,17 @@ internal class RaildriverInterface : PIEDataHandler, PIEErrorHandler
     {
         get
         {
-            if (CalibrationData.LightsMin == CalibrationData.LightsMax)
+            if (CalibrationData.LightsMin == CalibrationData.LightsCenter || CalibrationData.LightsCenter == CalibrationData.LightsMax)
                 return 0.0f;
 
-            return ((float)(RawLights - CalibrationData.LightsMin) / (float)(CalibrationData.LightsMax - CalibrationData.LightsMin));
+            if (RawLights < CalibrationData.LightsCenter)
+            {
+                return ((float)(RawLights - CalibrationData.LightsMin) / (float)(CalibrationData.LightsCenter - CalibrationData.LightsMin)) * 0.5f;
+            }
+            else
+            {
+                return ((float)(RawLights - CalibrationData.LightsCenter) / (float)(CalibrationData.LightsMax - CalibrationData.LightsCenter)) * 0.5f + 0.5f;
+            }
         }
     }
 

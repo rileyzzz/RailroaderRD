@@ -8,6 +8,6 @@ internal class RDConfig
     //[JsonIgnore]
     public static RDConfig Current { get; set; }
 
-    public CalibrationData CalibrationData { get; set; }
+    public CalibrationData CalibrationData { get; set; } = new();
 
 }

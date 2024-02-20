@@ -10,7 +10,7 @@ using UI.Builder;
 using HarmonyLib;
 using Game.Messages;
 using Game.State;
-using UnityEngine;
+//using UnityEngine;
 using Effects;
 
 namespace RailroaderRD;
@@ -84,8 +84,8 @@ public class RailroaderRD : PluginBase, IUpdateHandler, IModTabHandler
             {
                 loco.ControlHelper.Reverser = -raildriver.Reverser;
                 loco.ControlHelper.Throttle = raildriver.Throttle;
-                loco.ControlHelper.LocomotiveBrake = 1.0f - raildriver.AutoBrake;
-                loco.ControlHelper.TrainBrake = 1.0f - raildriver.IndBrake;
+                loco.ControlHelper.TrainBrake = 1.0f - raildriver.AutoBrake;
+                loco.ControlHelper.LocomotiveBrake = 1.0f - raildriver.IndBrake;
                 
                 if (raildriver.BailOff > 0.7f)
                     loco.ControlHelper.BailOff();
@@ -146,6 +146,16 @@ public class RailroaderRD : PluginBase, IUpdateHandler, IModTabHandler
             hstack.AddButtonCompact("1", () => { raildriver.CalibrationData.BailOffMax = raildriver.RawBailOff; SaveConfig(); });
         });
         builder.AddSlider(() => raildriver.BailOff, () => "", (x) => { }, 0.0f, 1.0f);
+
+        builder.AddLabel("Lights");
+        builder.HStack(delegate (UIPanelBuilder hstack) {
+            hstack.AddButtonCompact("Off", () => { raildriver.CalibrationData.LightsMin = raildriver.RawLights; SaveConfig(); });
+            hstack.AddButtonCompact("Dim", () => { raildriver.CalibrationData.LightsCenter = raildriver.RawLights; SaveConfig(); });
+            hstack.AddButtonCompact("Full", () => { raildriver.CalibrationData.LightsMax = raildriver.RawLights; SaveConfig(); });
+        });
+        builder.AddSlider(() => raildriver.Lights, () => "", (x) => { }, 0.0f, 1.0f);
+
+
     }
 
     public void ModTabDidClose()
