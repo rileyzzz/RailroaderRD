@@ -28,7 +28,6 @@ public class RailroaderRD : PluginBase, IUpdateHandler, IModTabHandler
 
     static RailroaderRD()
     {
-        Log.Information("Hello! Static Constructor was called!");
     }
 
     public RailroaderRD(IModdingContext moddingContext, IModDefinition self)
@@ -39,7 +38,7 @@ public class RailroaderRD : PluginBase, IUpdateHandler, IModTabHandler
         modContext = moddingContext;
         LoadConfig();
 
-        moddingContext.RegisterConsoleCommand(new EchoCommand());
+        // moddingContext.RegisterConsoleCommand(new EchoCommand());
     }
 
     public void LoadConfig()
@@ -56,8 +55,6 @@ public class RailroaderRD : PluginBase, IUpdateHandler, IModTabHandler
 
     public override void OnEnable()
     {
-        logger.Information("OnEnable() was called!");
-
         Instance = this;
 
         raildriver = new RaildriverInterface();

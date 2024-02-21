@@ -1,6 +1,6 @@
 # RailroaderRD (RailDriver for Railroader)
 
-This is an experimental clientside mod for Railroader that adds RailDriver support to the game.
+This is an experimental clientside mod for Railroader that adds [RailDriver](https://raildriver.com/) support to the game.
 
 ## Supported Features
 
