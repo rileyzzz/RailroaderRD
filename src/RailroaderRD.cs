@@ -88,7 +88,7 @@ public class RailroaderRD : PluginBase, IUpdateHandler, IModTabHandler
     public void Update()
     {
         // logger.Verbose("UPDATE()");
-        if (raildriver != null)
+        if (raildriver != null && raildriver.Connected)
         {
             var controller = TrainController.Shared;
             if (controller != null && controller.SelectedLocomotive is BaseLocomotive loco)
@@ -137,8 +137,15 @@ public class RailroaderRD : PluginBase, IUpdateHandler, IModTabHandler
 
     public void ModTabDidOpen(UIPanelBuilder builder)
     {
-        logger.Information("Daytime!");
+        if (raildriver == null || !raildriver.Connected)
+        {
+            builder.AddLabel("No RailDriver connected.");
+            builder.AddButton("Connect", () => { raildriver?.Connect(); builder.Rebuild(); });
+            return;
+        }
 
+        builder.AddLabel($"RailDriver {raildriver.Pid} connected.");
+        builder.AddButton("Disconnect", () => { raildriver?.Disconnect(); builder.Rebuild(); });
 
         builder.AddSection("Calibration");
 

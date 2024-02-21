@@ -91,6 +91,10 @@ internal class RaildriverInterface : PIEDataHandler, PIEErrorHandler
 {
     PIEDevice device;
 
+    public bool Connected => device != null;
+    public long Pid => device?.Pid ?? 0;
+
+
     PIEState deviceState;
     public CalibrationData CalibrationData => RDConfig.Current.CalibrationData;
 
