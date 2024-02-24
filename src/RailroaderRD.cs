@@ -13,6 +13,8 @@ using Game.State;
 //using UnityEngine;
 using Effects;
 using KeyValue.Runtime;
+using UnityEngine.InputSystem;
+using static UnityEngine.InputSystem.InputActionRebindingExtensions;
 
 namespace RailroaderRD;
 
@@ -57,8 +59,13 @@ public class RailroaderRD : PluginBase, IUpdateHandler, IModTabHandler
     {
         Instance = this;
 
-        raildriver = new RaildriverInterface();
-        raildriver.Connect();
+        //raildriver = new RaildriverInterface();
+        raildriver = InputSystem.AddDevice<RaildriverInterface>();
+
+        if (RDConfig.Current.AutoConnectOnStart)
+        {
+            raildriver.Connect();
+        }
     }
 
     public override void OnDisable()
@@ -132,20 +139,109 @@ public class RailroaderRD : PluginBase, IUpdateHandler, IModTabHandler
         }
     }
 
+    private readonly UIState<string> _selectedTabState = new UIState<string>(null);
+
     public void ModTabDidOpen(UIPanelBuilder builder)
     {
-        if (raildriver == null || !raildriver.Connected)
+        bool isConnected = raildriver != null && raildriver.Connected;
+
+        if (isConnected)
+        {
+            builder.AddLabel($"RailDriver {raildriver.Pid} connected.");
+            builder.AddButton("Disconnect", () => { raildriver?.Disconnect(); builder.Rebuild(); });
+        }
+        else
         {
             builder.AddLabel("No RailDriver connected.");
             builder.AddButton("Connect", () => { raildriver?.Connect(); builder.Rebuild(); });
-            return;
         }
 
-        builder.AddLabel($"RailDriver {raildriver.Pid} connected.");
-        builder.AddButton("Disconnect", () => { raildriver?.Disconnect(); builder.Rebuild(); });
+        builder.AddTabbedPanels(_selectedTabState, delegate (UITabbedPanelBuilder tabBuilder) {
+            tabBuilder.AddTab("Options", "Options", OptionsMenu);
+            if (isConnected)
+            {
+                tabBuilder.AddTab("Calibration", "Calibration", CalibrationMenu);
+            }
+        });
+    }
 
-        builder.AddSection("Calibration");
+    private void OptionsMenu(UIPanelBuilder builder)
+    {
+        builder.HStack(delegate (UIPanelBuilder hstack) {
+            hstack.AddLabel("Auto Connect on Game Start");
+            hstack.AddToggle(() => RDConfig.Current.AutoConnectOnStart, (value) => { RDConfig.Current.AutoConnectOnStart = value; SaveConfig(); });
+        });
+    }
 
+    // TODO: Alternate control bind system?
+    //private void ControlsMenu(UIPanelBuilder builder)
+    //{
+    //    var rebindableActions = GameInput.shared.RebindableActions;
+
+    //    foreach (var actions in rebindableActions)
+    //    {
+    //        builder.AddSection(actions.title, delegate (UIPanelBuilder builder) {
+    //            foreach (var action in actions.actions)
+    //            {
+    //                ButtonRebind(builder, action);
+    //            }
+    //        });
+    //    }
+    //}
+
+    //private InputAction _bindingControl;
+    //private RebindingOperation _rebindOp;
+
+    //private void ButtonRebind(UIPanelBuilder builder, InputAction action)
+    //{
+    //    // var cfg = RDConfig.Current.ControlBindings;
+
+    //    builder.HStack(delegate (UIPanelBuilder hstack) {
+    //        string controlName = action.name;
+    //        Guid controlId = action.id;
+    //        hstack.AddLabel(controlName);
+
+    //        string bound = "None";
+    //        if (_bindingControl == action)
+    //            bound = "<Waiting...>";
+
+    //        //if (cfg.TryGetValue(controlId, out int value))
+    //        //    bound = $"Button {value}";
+
+    //        hstack.AddButton(bound, () => {
+    //            if (_rebindOp != null)
+    //                _rebindOp.Cancel();
+
+    //            bool actionWasEnabled = action.enabled;
+    //            if (actionWasEnabled)
+    //            {
+    //                action.Disable();
+    //            }
+
+    //            _bindingControl = action;
+    //            _rebindOp = action.PerformInteractiveRebinding()
+    //                // .WithBindingGroup("Gamepad")
+    //                .WithControlsExcluding("<Mouse>/leftButton").WithControlsExcluding("<Mouse>/rightButton").WithControlsExcluding("<Mouse>/press")
+    //                .WithCancelingThrough("<Keyboard>/escape")
+    //                .OnCancel((x) => {
+    //                    _bindingControl = null;
+    //                    _rebindOp = null;
+    //                    builder.Rebuild();
+    //                })
+    //                .OnComplete((x) => {
+    //                    _bindingControl = null;
+    //                    _rebindOp = null;
+    //                    builder.Rebuild();
+    //                });
+
+    //            _rebindOp.Start();
+    //            builder.Rebuild();
+    //        });
+    //    });
+    //}
+
+    private void CalibrationMenu(UIPanelBuilder builder)
+    {
         builder.AddLabel("Reverser");
         builder.HStack(delegate (UIPanelBuilder hstack) {
             hstack.AddButtonCompact("F", () => { raildriver.CalibrationData.ReverserMin = raildriver.RawReverser; SaveConfig(); });
@@ -191,8 +287,6 @@ public class RailroaderRD : PluginBase, IUpdateHandler, IModTabHandler
             hstack.AddButtonCompact("Full", () => { raildriver.CalibrationData.LightsMax = raildriver.RawLights; SaveConfig(); });
         });
         builder.AddSlider(() => raildriver.Lights, () => "", (x) => { }, 0.0f, 1.0f);
-
-
     }
 
     public void ModTabDidClose()

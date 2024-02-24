@@ -15,14 +15,16 @@ The following RailDriver inputs are currently supported:
 - Camera DPad in both first person and strategy camera modes
 - Camera zoom in strategy camera
 
+Additional controls can be bound within RailRoader's native control menu when a RailDriver is connected.
+
 ## Installation
 
 1. This mod requires Railloader to run, [which can be installed here](https://railroader.stelltis.ch/).
 2. Download the mod zip file available from the releases page.
 
-3. To install, either:
+3. To install the mod, either:
     * Drag the contents of the zip file (Mods folder) into RailRoader's root directory.
-    * Drag the zip file onto Railloader.exe.
+    * Drag the zip file itself onto Railloader.exe.
 
 
 4. Once installed, you'll need to calibrate your RailDriver in game.
