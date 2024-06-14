@@ -102,9 +102,18 @@ public class RailroaderRD : PluginBase, IUpdateHandler, IModTabHandler
             {
                 raildriver.UpdateVelocityDisplay(Math.Abs(loco.velocity));
 
-                Orders orders = _ordersRef(controller.SelectedLocomotive.AutoEngineerPlanner);
+                bool ignore_input = false;
 
-                if (orders.Enabled == false)
+                if (controller.SelectedLocomotive.AutoEngineerPlanner != null)
+                {
+                    Orders orders = _ordersRef(controller.SelectedLocomotive.AutoEngineerPlanner);
+                    if (orders.Enabled == true)
+                    {
+                        ignore_input = true;
+                    }
+                }
+
+                if (!ignore_input)
                 {
                     loco.ControlHelper.Reverser = -raildriver.Reverser;
                     loco.ControlHelper.Throttle = raildriver.Throttle;
@@ -302,4 +311,3 @@ public class RailroaderRD : PluginBase, IUpdateHandler, IModTabHandler
         //  SaveConfig();
     }
 }
-
