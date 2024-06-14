@@ -1,4 +1,4 @@
-﻿using Character;
+using Character;
 using Model;
 using Railloader;
 using Serilog;
@@ -15,6 +15,7 @@ using Effects;
 using KeyValue.Runtime;
 using UnityEngine.InputSystem;
 using static UnityEngine.InputSystem.InputActionRebindingExtensions;
+using Model.AI;
 
 namespace RailroaderRD;
 
@@ -25,6 +26,8 @@ public class RailroaderRD : PluginBase, IUpdateHandler, IModTabHandler
     ILogger logger = Log.ForContext<RailroaderRD>();
     RaildriverInterface raildriver = null;
     IModdingContext modContext;
+
+    static AccessTools.FieldRef<AutoEngineerPlanner, Orders> _ordersRef = AccessTools.FieldRefAccess<AutoEngineerPlanner, Orders>("_orders");
 
     public static RailroaderRD Instance { get; set; }
 
@@ -99,38 +102,52 @@ public class RailroaderRD : PluginBase, IUpdateHandler, IModTabHandler
             {
                 raildriver.UpdateVelocityDisplay(Math.Abs(loco.velocity));
 
-                loco.ControlHelper.Reverser = -raildriver.Reverser;
-                loco.ControlHelper.Throttle = raildriver.Throttle;
-                loco.ControlHelper.TrainBrake = 1.0f - raildriver.AutoBrake;
-                loco.ControlHelper.LocomotiveBrake = 1.0f - raildriver.IndBrake;
-                
-                if (raildriver.BailOff > 0.7f)
-                    loco.ControlHelper.BailOff();
+                bool ignore_input = false;
 
-                int headlight = (int)Math.Round(raildriver.Lights * 2.0f);
-                int bits = HeadlightStateLogic.IntFromStates((HeadlightController.State)headlight, (HeadlightController.State)headlight);
-                if (bits != GetValue(loco, PropertyChange.Control.Headlight).IntValue)
+                if (controller.SelectedLocomotive.AutoEngineerPlanner != null)
                 {
-                    ChangeValue(loco, PropertyChange.Control.Headlight, bits);
+                    Orders orders = _ordersRef(controller.SelectedLocomotive.AutoEngineerPlanner);
+                    if (orders.Enabled == true)
+                    {
+                        ignore_input = true;
+                    }
                 }
 
-                ButtonMask downMask = raildriver.Buttons;
-                ButtonMask pressed = downMask & (downMask ^ prevMask);
-
-                if (pressed.HasFlag(ButtonMask.Bell))
+                if (!ignore_input)
                 {
-                    loco.ControlHelper.Bell = !loco.ControlHelper.Bell;
+                    loco.ControlHelper.Reverser = -raildriver.Reverser;
+                    loco.ControlHelper.Throttle = raildriver.Throttle;
+                    loco.ControlHelper.TrainBrake = 1.0f - raildriver.AutoBrake;
+                    loco.ControlHelper.LocomotiveBrake = 1.0f - raildriver.IndBrake;
+
+                    if (raildriver.BailOff > 0.7f)
+                        loco.ControlHelper.BailOff();
+
+                    int headlight = (int)Math.Round(raildriver.Lights * 2.0f);
+                    int bits = HeadlightStateLogic.IntFromStates((HeadlightController.State)headlight, (HeadlightController.State)headlight);
+                    if (bits != GetValue(loco, PropertyChange.Control.Headlight).IntValue)
+                    {
+                        ChangeValue(loco, PropertyChange.Control.Headlight, bits);
+                    }
+
+                    ButtonMask downMask = raildriver.Buttons;
+                    ButtonMask pressed = downMask & (downMask ^ prevMask);
+
+                    if (pressed.HasFlag(ButtonMask.Bell))
+                    {
+                        loco.ControlHelper.Bell = !loco.ControlHelper.Bell;
+                    }
+
+                    float whistle = 0.0f;
+                    if (downMask.HasFlag(ButtonMask.WhistleUp))
+                        whistle += 1.0f;
+                    if (downMask.HasFlag(ButtonMask.WhistleDown))
+                        whistle += 0.5f;
+
+                    loco.ControlHelper.Horn = whistle;
+
+                    prevMask = downMask;
                 }
-
-                float whistle = 0.0f;
-                if (downMask.HasFlag(ButtonMask.WhistleUp))
-                    whistle += 1.0f;
-                if (downMask.HasFlag(ButtonMask.WhistleDown))
-                    whistle += 0.5f;
-
-                loco.ControlHelper.Horn = whistle;
-
-                prevMask = downMask;
             }
             else
             {
@@ -294,4 +311,3 @@ public class RailroaderRD : PluginBase, IUpdateHandler, IModTabHandler
         //  SaveConfig();
     }
 }
-
